@@ -14,10 +14,10 @@ export default function App() {
         <p className="eyebrow">Wadatsumi Project</p>
         <h1>Wadatsumi Recorder MCP</h1>
       </header>
-      {isLoginRoute ? (
-        <Login />
-      ) : isAuthorizationRequest ? (
+      {isAuthorizationRequest ? (
         <Authorize />
+      ) : isLoginRoute ? (
+        <Login />
       ) : (
         <section aria-label="稼働状態">
           <p>Wadatsumi Recorder authorization UI is ready.</p>
