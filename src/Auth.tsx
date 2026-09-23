@@ -17,8 +17,9 @@ let loginCompletionStarted = false;
 function appUrl(route?: 'login' | 'authenticate', returnTo?: string | null) {
   const url = new URL(BASE_PATH, window.location.origin);
   if (route) url.searchParams.set(ROUTE_PARAM, route);
-  if (isSafeReturnTo(returnTo ?? null)) {
-    url.searchParams.set('return_to', returnTo);
+  const safeReturnTo = returnTo ?? null;
+  if (isSafeReturnTo(safeReturnTo)) {
+    url.searchParams.set('return_to', safeReturnTo);
   }
   return url.toString();
 }
