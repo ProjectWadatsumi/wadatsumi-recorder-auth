@@ -12,7 +12,11 @@ if (!publicToken) {
   throw new Error('VITE_STYTCH_PUBLIC_TOKEN is required');
 }
 
-const stytch = new StytchB2BUIClient(publicToken);
+// Keep frontend authorization on the same issuer domain as MCP discovery.
+// Stytch derives OAuth issuer values from the domain handling the request.
+const stytch = new StytchB2BUIClient(publicToken, {
+  customBaseUrl: 'https://imaginary-denim-3460.customers.stytch.dev',
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
