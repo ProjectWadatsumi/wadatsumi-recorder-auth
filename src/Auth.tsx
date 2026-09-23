@@ -78,8 +78,14 @@ function authorizationErrorMessage(error: unknown) {
 }
 
 export function Login() {
+  const { member, isInitialized } = useStytchMember();
   const returnToFromUrl = new URLSearchParams(window.location.search).get('return_to');
   const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : readReturnTo();
+
+  useEffect(() => {
+    if (!isInitialized || !member) return;
+    onLoginComplete();
+  }, [isInitialized, member]);
 
   const config = useMemo(
     () =>
