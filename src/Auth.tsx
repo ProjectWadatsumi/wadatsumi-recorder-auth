@@ -14,9 +14,12 @@ const BASE_PATH = import.meta.env.BASE_URL;
 
 let loginCompletionStarted = false;
 
-function appUrl(route?: 'login' | 'authenticate') {
+function appUrl(route?: 'login' | 'authenticate', returnTo?: string | null) {
   const url = new URL(BASE_PATH, window.location.origin);
   if (route) url.searchParams.set(ROUTE_PARAM, route);
+  if (isSafeReturnTo(returnTo ?? null)) {
+    url.searchParams.set('return_to', returnTo);
+  }
   return url.toString();
 }
 
@@ -57,7 +60,8 @@ function clearReturnTo() {
 function onLoginComplete() {
   if (loginCompletionStarted) return;
   loginCompletionStarted = true;
-  const returnTo = readReturnTo();
+  const returnToFromUrl = new URLSearchParams(window.location.search).get('return_to');
+  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : readReturnTo();
   clearReturnTo();
   window.location.assign(returnTo ?? appUrl());
 }
@@ -73,6 +77,9 @@ function authorizationErrorMessage(error: unknown) {
 }
 
 export function Login() {
+  const returnToFromUrl = new URLSearchParams(window.location.search).get('return_to');
+  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : readReturnTo();
+
   const config = useMemo(
     () =>
       ({
@@ -80,14 +87,14 @@ export function Login() {
         products: [B2BProducts.oauth],
         oauthOptions: {
           providers: [{ type: OAuthProviders.Google }],
-          loginRedirectURL: appUrl('authenticate'),
-          signupRedirectURL: appUrl('authenticate'),
+          loginRedirectURL: appUrl('authenticate', returnTo),
+          signupRedirectURL: appUrl('authenticate', returnTo),
         },
         sessionOptions: {
           sessionDurationMinutes: 60,
         },
       }) satisfies StytchB2BUIConfig,
-    [],
+    [returnTo],
   );
 
   return (
@@ -112,8 +119,9 @@ function LoginRequired({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isInitialized || member) return;
-    rememberReturnTo(window.location.href);
-    window.location.assign(appUrl('login'));
+    const returnTo = window.location.href;
+    rememberReturnTo(returnTo);
+    window.location.assign(appUrl('login', returnTo));
   }, [isInitialized, member]);
 
   if (!isInitialized || !member) return null;
