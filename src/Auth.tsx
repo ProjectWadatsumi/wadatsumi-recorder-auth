@@ -28,43 +28,31 @@ function isSafeReturnTo(value: string | null): value is string {
   if (!value) return false;
   try {
     const url = new URL(value);
-    return url.origin === window.location.origin && url.pathname === BASE_PATH;
+    return url.origin === window.location.origin && url.pathname === BASE_PATH
+      && url.searchParams.has('client_id') && url.searchParams.has('state')
+      && url.searchParams.get('response_type') === 'code'
+      && !url.searchParams.has(ROUTE_PARAM);
   } catch {
     return false;
   }
 }
 
-function rememberReturnTo(value: string) {
-  localStorage.setItem(RETURN_TO_KEY, value);
-  sessionStorage.setItem(RETURN_TO_KEY, value);
-  window.name = `${RETURN_TO_WINDOW_PREFIX}${value}`;
-}
-
-function readReturnTo() {
-  const fromWindowName = window.name.startsWith(RETURN_TO_WINDOW_PREFIX)
-    ? window.name.slice(RETURN_TO_WINDOW_PREFIX.length)
-    : null;
-  const candidates = [
-    sessionStorage.getItem(RETURN_TO_KEY),
-    localStorage.getItem(RETURN_TO_KEY),
-    fromWindowName,
-  ];
-  return candidates.find(isSafeReturnTo) ?? null;
-}
-
 function clearReturnTo() {
-  localStorage.removeItem(RETURN_TO_KEY);
-  sessionStorage.removeItem(RETURN_TO_KEY);
+  // Only remove this app's obsolete fallback; SDK session/PKCE storage is untouched.
+  for (const storageName of ['localStorage', 'sessionStorage'] as const) {
+    try { window[storageName].removeItem(RETURN_TO_KEY); } catch { /* Storage may be disabled. */ }
+  }
   if (window.name.startsWith(RETURN_TO_WINDOW_PREFIX)) window.name = '';
 }
 
 function onLoginComplete() {
   if (loginCompletionStarted) return;
-  loginCompletionStarted = true;
   const returnToFromUrl = new URLSearchParams(window.location.search).get('return_to');
-  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : readReturnTo();
+  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : null;
   clearReturnTo();
-  window.location.assign(returnTo ?? appUrl());
+  if (!returnTo) return;
+  loginCompletionStarted = true;
+  window.location.assign(returnTo);
 }
 
 function authorizationErrorMessage(error: unknown) {
@@ -80,12 +68,13 @@ function authorizationErrorMessage(error: unknown) {
 export function Login() {
   const { member, isInitialized } = useStytchMember();
   const returnToFromUrl = new URLSearchParams(window.location.search).get('return_to');
-  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : readReturnTo();
+  const returnTo = isSafeReturnTo(returnToFromUrl) ? returnToFromUrl : null;
 
   useEffect(() => {
-    if (!isInitialized || !member) return;
+    clearReturnTo();
+    if (!isInitialized || !member || !returnTo) return;
     onLoginComplete();
-  }, [isInitialized, member]);
+  }, [isInitialized, member, returnTo]);
 
   const config = useMemo(
     () =>
@@ -94,8 +83,7 @@ export function Login() {
         products: [B2BProducts.oauth],
         oauthOptions: {
           providers: [{ type: OAuthProviders.Google }],
-          loginRedirectURL: appUrl('authenticate', returnTo),
-          signupRedirectURL: appUrl('authenticate', returnTo),
+          discoveryRedirectURL: appUrl('authenticate', returnTo),
         },
         sessionOptions: {
           sessionDurationMinutes: 60,
@@ -103,6 +91,10 @@ export function Login() {
       }) satisfies StytchB2BUIConfig,
     [returnTo],
   );
+
+  if (!returnTo) {
+    return <p role="alert">接続要求を確認できません。ChatGPTの接続画面から開始してください。</p>;
+  }
 
   return (
     <section aria-label="Googleでログイン">
@@ -127,7 +119,7 @@ function LoginRequired({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isInitialized || member) return;
     const returnTo = window.location.href;
-    rememberReturnTo(returnTo);
+    clearReturnTo();
     window.location.assign(appUrl('login', returnTo));
   }, [isInitialized, member]);
 
