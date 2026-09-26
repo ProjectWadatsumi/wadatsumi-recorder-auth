@@ -31,6 +31,7 @@ jobs:
         run: npm run build
         env:
           VITE_STYTCH_PUBLIC_TOKEN: public-token-test-4c35f31f-1cd2-4fca-861f-ee1a129674f3
+          VITE_STYTCH_CUSTOM_BASE_URL: https://login-test.chiyajinja.jp
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
