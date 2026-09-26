@@ -7,12 +7,17 @@ import App from './App';
 import './styles.css';
 
 const publicToken = import.meta.env.VITE_STYTCH_PUBLIC_TOKEN?.trim();
+const customBaseUrl = import.meta.env.VITE_STYTCH_CUSTOM_BASE_URL?.trim();
 
 if (!publicToken) {
   throw new Error('VITE_STYTCH_PUBLIC_TOKEN is required');
 }
 
-const stytch = new StytchB2BUIClient(publicToken);
+if (!customBaseUrl || !/^https:\/\/[a-z0-9.-]+$/i.test(customBaseUrl)) {
+  throw new Error('VITE_STYTCH_CUSTOM_BASE_URL must be an HTTPS origin');
+}
+
+const stytch = new StytchB2BUIClient(publicToken, { customBaseUrl });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
